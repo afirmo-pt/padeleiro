@@ -49,4 +49,5 @@ EOF
 
           gh api --method PUT "/repos/${owner}/${repo}/branches/${branch}/protection" --input /tmp/protection.json
 
-          echo "Branch protection applied to ${owner}/${repo}@${branch}";
+          echo "Branch protection applied to ${owner}/${repo}@${branch}"
+
