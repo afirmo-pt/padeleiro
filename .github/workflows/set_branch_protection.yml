@@ -26,19 +26,17 @@ jobs:
       - name: Set branch protection via GitHub REST API
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GH_ADMIN_PAT }}
           script: |
-            const { Octokit } = require('@octokit/rest');
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const branch = process.env.BRANCH || 'main';
-            const adminPat = process.env.ADMIN_PAT;
-            const client = new Octokit({ auth: adminPat });
 
             // Required status check contexts must match the workflow checks visible in the PR UI.
             // Adjust the context name below if your workflow uses a different display name.
             const contexts = ['CI & Deploy / Run tests'];
 
-            await client.rest.repos.updateBranchProtection({
+            await github.rest.repos.updateBranchProtection({
               owner,
               repo,
               branch,
