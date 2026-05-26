@@ -31,13 +31,13 @@ jobs:
             const repo = context.repo.repo;
             const branch = process.env.BRANCH || 'main';
             const adminPat = process.env.ADMIN_PAT;
-            const octokit = github.getOctokit(adminPat);
+            const client = github.getOctokit(adminPat);
 
             // Required status check contexts must match the workflow checks visible in the PR UI.
             // Adjust the context name below if your workflow uses a different display name.
             const contexts = ['CI & Deploy / Run tests'];
 
-            await octokit.rest.repos.updateBranchProtection({
+            await client.rest.repos.updateBranchProtection({
               owner,
               repo,
               branch,
