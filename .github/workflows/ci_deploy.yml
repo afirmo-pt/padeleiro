@@ -1,0 +1,81 @@
+name: CI & Deploy
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  Run tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          cache: true
+
+      - name: Get Flutter dependencies
+        run: |
+          cd padeleiro_app
+          flutter pub get
+
+      - name: Run Flutter analyzer
+        run: |
+          cd padeleiro_app
+          flutter analyze
+
+      - name: Run Flutter tests
+        run: |
+          cd padeleiro_app
+          flutter test
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Firebase Functions dependencies
+        run: |
+          cd functions
+          npm install
+
+      - name: Run Firebase Functions linter
+        run: |
+          cd functions
+          npm run lint
+
+  deploy:
+    needs: Run tests
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    permissions:
+      contents: read
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Install Firebase Functions dependencies
+        run: |
+          cd functions
+          npm install
+
+      - name: Deploy to Firebase
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/serviceAccountKey.json
+          firebase deploy --project padeleiro-app --token ${{ secrets.FIREBASE_TOKEN }}
