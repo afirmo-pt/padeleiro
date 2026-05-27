@@ -1,0 +1,155 @@
+**Document Control**
+*   **Project Name:** PadelSync
+*   **Document Type:** System Architecture & Technical Design Document (TDD)
+*   **Author:** Lead Software Architect
+*   **Target Audience:** Product Owner, UX/UI Designers, Engineering Team
+*   **Date:** May 23, 2026
+*   **Version:** 2.0 (MVP Architecture - Firebase Blaze)
+
+---
+
+### 1. Executive Summary & Architectural Vision
+Thank you for confirming the technical direction. The vision for PadelSync remains clear: a highly reliable, offline-capable, and community-vetted platform. 
+
+By pivoting to **Firebase (Blaze Plan)**, we are prioritizing rapid MVP delivery and flawless offline performance. Our architectural guiding principles are now:
+1.  **Native Offline-First Client:** We will leverage Firebase Firestore’s built-in offline persistence rather than building a custom sync engine. The app will treat the local cache as the primary source of truth for immediate UI updates.
+2.  **NoSQL Document Backend:** We will embrace Firestore’s document-based model. We will use denormalization for historical records (matches) and Cloud Functions for aggregations (player stats) to ensure high read performance and low latency.
+3.  **Cross-Platform from Day 1:** We will use Flutter to ensure the iOS Phase 2 is a seamless continuation, not a rewrite.
+
+---
+
+### 2. Technology Stack Decisions
+
+#### Q1: Client Framework 
+*   **Decision:** **Flutter (Dart)**
+*   **Justification:** Single codebase for Android (MVP) and iOS (Phase 2). Excellent official support for Firebase SDKs, allowing us to ship the Android MVP now and flip the switch for iOS later with minimal effort.
+
+#### Q2: Backend & Infrastructure 
+*   **Decision:** **Firebase (Blaze Plan)**
+    *   *Database:* Cloud Firestore (NoSQL)
+    *   *Auth:* Firebase Authentication
+    *   *Compute:* Cloud Functions for Firebase (Node.js/TypeScript)
+    *   *Messaging:* Firebase Cloud Messaging (FCM)
+*   **Justification:** Firestore’s native offline persistence solves our biggest technical risk (poor cellular reception at padel clubs) out-of-the-box. The Blaze (pay-as-you-go) plan ensures we only pay for what we use, and the free tier is generous enough to likely cover our first 1,000 users entirely.
+
+#### Q3: Admin Interface 
+*   **Decision:** **In-App Admin Dashboard (Hidden via RBAC) + Firebase Console**
+*   **Justification:** Admin tasks (approving users, adding locations) will be handled via a dedicated "Admin" tab in the Flutter app to avoid building a separate web frontend. For "Super Admin" tasks (database backups, deep debugging), we will use the native Firebase Web Console.
+
+#### Q4: Third-Party Integrations (Maps)
+*   **Decision:** **Google Maps Platform (Places API + Maps SDK)** 
+*   **Justification:** Best-in-class location data. Wrapped in a Repository pattern (`ILocationRepository`) to allow swapping to Mapbox in Phase 2 if pricing scales unfavorably.
+
+---
+
+### 3. High-Level System Architecture
+
+```mermaid
+graph TD
+    subgraph Client ["Flutter Mobile App (Android/iOS)"]
+        UI[UI Layer / Widgets]
+        BL[Business Logic / BLoC]
+        FSDK[Firebase SDK]
+        Cache[(Local Firestore Cache)]
+    end
+
+    subgraph Backend ["Firebase Blaze Infrastructure"]
+        Auth[Firebase Auth]
+        FS[(Cloud Firestore DB)]
+        CF[Cloud Functions / Triggers]
+        FCM[Firebase Cloud Messaging]
+    end
+
+    subgraph External ["External Services"]
+        GMaps[Google Maps / Places API]
+    end
+
+    UI --> BL
+    BL --> FSDK
+    FSDK <-->|Offline Persistence| Cache
+    FSDK <-->|Sync when online| FS
+    Auth --> FSDK
+    FS -->|Triggers on Match Complete| CF
+    CF -->|Update Stats / Send Push| FCM
+    FCM -->|Push Notifications| Client
+    
+    Client -->|Search/Add Clubs| GMaps
+```
+
+---
+
+### 4. Data Architecture & The "Offline-First" Strategy
+
+Because Firestore is a NoSQL document database, we must model our data for **read-speed** and **offline availability** rather than strict relational normalization.
+
+#### Core Collections:
+*   `users`: Authentication profiles and app-specific metadata (Role, Status).
+*   `user_profiles`: Extended public profiles (Name, Avatar, Club).
+*   `user_stats`: Pre-calculated aggregations (Total Matches, Wins, Losses).
+*   `locations`: Master list of Padel Clubs/Courts.
+*   `matches`: Match details, including **denormalized** player names and location names to preserve historical accuracy.
+
+#### The Offline-First Strategy:
+1.  **Native Persistence:** We will enable `FirebaseFirestore.instance.settings = Settings(persistenceEnabled: true);`. This automatically caches all read data to the device's local SQLite database managed by the SDK.
+2.  **Optimistic UI:** When a user logs a score offline, the Firestore SDK writes to the local cache immediately. The UI updates instantly. The SDK queues the write and pushes it to the cloud the millisecond network connectivity is restored.
+3.  **Conflict Resolution (Match Scores):**
+    *   Firestore handles concurrent writes via "last-write-wins" at the field level. 
+    *   *Rule:* To prevent race conditions, the backend Cloud Function will enforce that only the `match_creator_id` can transition a match from `SCHEDULED` to `COMPLETED`. If a dispute occurs, the client writes to a `disputes` subcollection, triggering a Cloud Function to notify the Admin.
+
+#### Handling Aggregations (Stats):
+Firestore cannot perform `COUNT` or `SUM` queries efficiently. 
+*   **Solution:** When a match score is finalized, a Firestore Trigger (Cloud Function) will execute. It will read the match result, calculate the winners/losers, and atomically increment the `wins` and `losses` fields in the respective players' `user_stats` documents. The Flutter app simply reads the `user_stats` document directly.
+
+---
+
+### 5. Security & Role-Based Access Control (RBAC)
+
+We will enforce the "Vetted Community" rules using **Firestore Security Rules** and **Firebase Custom Claims**.
+
+*   **Firebase Custom Claims:** When an Admin approves a user, a Cloud Function will assign a custom claim to their Firebase Auth token (e.g., `role: 'admin'`). Security rules will check `request.auth.token.role == 'admin'` to protect admin-only write operations.
+*   **User Status (Pending vs. Active):** 
+    *   Upon registration, a `user_profiles` document is created with `status: 'pending'`.
+    *   *Security Rule:* Users with `status: 'pending'` can only read/write their own profile. They cannot read the `matches` or `locations` collections.
+    *   Once an Admin updates the status to `'active'`, the security rules grant the user read access to global collections and write access to create matches.
+
+---
+
+### 6. Risk Assessment & Mitigation
+
+| Risk | Impact | Mitigation Strategy |
+| :--- | :--- | :--- |
+| **NoSQL Data Anomalies** (e.g., A user changes their name, but old matches show the old name) | Low | **Embrace Immutability:** We will denormalize player names into the `matches` document at the time of creation. Historical matches will retain the name the player used *at that time*, which is actually preferred for sports records. |
+| **Firestore Read Cost Spikes** (Inefficient queries downloading too much data) | Medium | Strict querying (pagination, limiting results). We will cache the `locations` collection locally and only fetch delta updates. The UI will rely on real-time listeners (`snapshots()`) scoped to small, specific queries. |
+| **Offline Queue Bloat** (User stays offline for weeks, queue gets too large) | Low | The Firestore SDK handles queueing natively. We will implement a UI warning if the app detects it has been offline for >48 hours, prompting the user to connect to Wi-Fi to sync. |
+| **Cloud Function Cold Starts** (Delay in updating stats after a match) | Low | Stats updates are asynchronous and not required for the immediate post-match UI. The user sees the match result instantly; the `user_stats` update will follow a few seconds later. |
+
+---
+
+### 7. Rough Infrastructure Cost Estimate (First 1,000 Users)
+
+Firebase Blaze is pay-as-you-go, but the free tier is substantial. For an MVP with ~1,000 active users logging ~3 matches a week:
+
+*   **Cloud Firestore:** ~50k reads/day and ~20k writes/day. (The free tier allows 50k reads/day and 20k writes/day. We will be right on the edge of the free tier; overages are pennies).
+*   **Cloud Functions:** ~5k invocations/month. (Free tier allows 2M/month).
+*   **Firebase Auth & FCM:** Free.
+*   **Google Maps Platform:** $0 / month (Covered by the $200 monthly free credit).
+*   **Total Estimated Monthly Run Cost:** **$0.00 to $15.00 / month** (Costs will only scale linearly as we acquire more users).
+
+---
+
+### 8. Next Steps: Handoff to UX/UI and Code Planning
+
+To move into the next phases, here are the actionable directives for the team:
+
+#### For the UX/UI Design Team:
+1.  **Design for Optimistic UI & Sync States:** Since Firestore handles sync natively, design subtle UI indicators. When a user logs a score, show a "Saving..." state that transitions to a "Synced" checkmark when the Firestore snapshot listener confirms the cloud write.
+2.  **Admin Flow:** Design the Admin Dashboard as a bottom-navigation tab that *only renders* if the user's auth token contains the Admin custom claim. Include a swipe-to-approve/reject gesture for the user registration queue.
+3.  **Empty States:** Design engaging empty states for new users who have no match history or stats yet.
+
+#### For the Engineering Team (Code Planning):
+1.  **Sprint 0 (Setup):** Initialize the Flutter repository, set up CI/CD (GitHub Actions -> Firebase App Distribution for Android), and provision the Firebase Blaze project.
+2.  **NoSQL Schema & Security Rules:** Draft the exact Firestore collections and write comprehensive **Firestore Security Rules** to enforce the Pending/Active/Admin RBAC.
+3.  **Cloud Functions:** Scaffold the Node.js/TypeScript Cloud Functions repository. Write the `onMatchFinalized` trigger to handle stat aggregations.
+4.  **Repository Layer:** Build the Flutter data layer using `cloud_firestore`. Implement the offline persistence settings and real-time stream builders for the UI team.
+
+**PO:** This document now fully reflects the Firebase Blaze architecture. If you approve, I will finalize the Jira epics based on this stack, and we can kick off Sprint 0 on Monday.

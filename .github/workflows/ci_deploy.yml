@@ -1,0 +1,84 @@
+name: CI & Deploy
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+
+      - name: Install dependencies
+        run: |
+          cd padeleiro_app
+          flutter pub get
+
+      - name: Run Flutter tests
+        run: |
+          cd padeleiro_app
+          flutter test --no-pub --concurrency=1
+
+  deploy:
+    name: Build and Deploy to Firebase
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    env:
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      # GOOGLE_APPLICATION_CREDENTIALS will be set at runtime to the temp file
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+
+      - name: Install functions dependencies and build
+        working-directory: functions
+        run: |
+          npm ci
+          if [ -f package.json ] && grep -q "build" package.json; then
+            npm run build || true
+          fi
+
+      - name: Authenticate with service account
+        run: |
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > "$RUNNER_TEMP/firebase_sa.json"
+          echo "Wrote service account to $RUNNER_TEMP/firebase_sa.json"
+        shell: bash
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy Firestore rules, functions, hosting
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase_sa.json
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          firebase deploy --only firestore:rules,functions,hosting --project "$FIREBASE_PROJECT_ID"
+
+      - name: Clean up service account file
+        run: |
+          rm -f "$RUNNER_TEMP/firebase_sa.json" || true
+        shell: bash

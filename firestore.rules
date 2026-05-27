@@ -1,0 +1,124 @@
+// Deploy with: firebase deploy --only firestore:rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.role == 'admin';
+    }
+
+    function isActiveUser() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active';
+    }
+
+    function isParticipant(matchData) {
+      return request.auth.uid in [
+        matchData.teamA.player1Id, matchData.teamA.player2Id,
+        matchData.teamB.player1Id, matchData.teamB.player2Id
+      ];
+    }
+
+    function canUpdateOwnUser(uid) {
+      return request.auth.uid == uid &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.fullName is string &&
+        request.resource.data.phone is string &&
+        request.resource.data.community is string &&
+        request.resource.data.keys().hasAll([
+          'uid', 'email', 'fullName', 'phone', 'community', 'status', 'createdAt'
+        ]);
+    }
+
+    function isValidUserCreate(uid) {
+      return request.auth.uid == uid &&
+        request.resource.data.uid == uid &&
+        request.resource.data.email is string &&
+        request.resource.data.fullName is string &&
+        request.resource.data.phone is string &&
+        request.resource.data.community is string &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.keys().hasAll([
+          'uid', 'email', 'fullName', 'phone', 'community', 'status', 'createdAt'
+        ]);
+    }
+
+    function isValidMatchTeam(team) {
+      return team is map &&
+        team.player1Id is string &&
+        team.player1Name is string &&
+        team.player2Id is string &&
+        team.player2Name is string;
+    }
+
+    function isValidMatchCreate() {
+      return request.resource.data.status == 'scheduled' &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.scheduledAt is timestamp &&
+        request.resource.data.locationId is string &&
+        request.resource.data.locationName is string &&
+        isValidMatchTeam(request.resource.data.teamA) &&
+        isValidMatchTeam(request.resource.data.teamB) &&
+        request.resource.data.playerIds is list &&
+        request.resource.data.playerIds.size() == 4;
+    }
+
+    function isValidMatchComplete() {
+      return resource.data.status == 'scheduled' &&
+        request.resource.data.status == 'completed' &&
+        request.auth.uid == resource.data.createdBy &&
+        request.resource.data.scores is list &&
+        request.resource.data.winnerId is string &&
+        request.resource.data.teamA == resource.data.teamA &&
+        request.resource.data.teamB == resource.data.teamB &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.scheduledAt == resource.data.scheduledAt &&
+        request.resource.data.locationId == resource.data.locationId &&
+        request.resource.data.locationName == resource.data.locationName &&
+        request.resource.data.playerIds == resource.data.playerIds;
+    }
+
+    function isValidLocationWrite() {
+      return request.resource.data.name is string &&
+        request.resource.data.address is string &&
+        request.resource.data.isActive is bool &&
+        (
+          !request.resource.data.keys().hasAny(['createdAt']) ||
+          request.resource.data.createdAt is timestamp
+        );
+    }
+
+    match /users/{uid} {
+      allow create: if isValidUserCreate(uid);
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
+      allow update: if isAdmin() || canUpdateOwnUser(uid);
+      allow delete: if isAdmin();
+    }
+
+    match /user_stats/{uid} {
+      allow read: if isActiveUser() || isAdmin();
+      allow write: if false;
+    }
+
+    match /locations/{locationId} {
+      allow read: if isActiveUser() || isAdmin();
+      allow create, update: if isAdmin() && isValidLocationWrite();
+      allow delete: if false;
+    }
+
+    match /matches/{matchId} {
+      allow read: if isAdmin() || (isAuthenticated() && isParticipant(resource.data));
+      allow create: if isActiveUser() && isValidMatchCreate();
+      allow update: if isActiveUser() && request.auth.uid == resource.data.createdBy && isValidMatchComplete();
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,105 @@
+**Document Control**
+*   **Project Name:** PadelSync (Working Title)
+*   **Document Type:** Product Requirements & Architectural Brief
+*   **Author:** [Your Name/Title], Product Owner
+*   **Target Audience:** Lead Software Architect
+*   **Date:** May 22, 2026
+*   **Version:** 1.0 (MVP Definition)
+
+---
+
+### 1. Executive Summary & Product Vision
+Padel is one of the fastest-growing sports globally, but local communities still rely on fragmented WhatsApp groups and spreadsheets to track matches, scores, and player availability. 
+
+**PadelSync** is an Android-first mobile application designed to digitize the local padel experience. The MVP will focus on building a trusted, vetted community of players who can log their matches (location, date/time, results) and track their personal history. To ensure high data quality and prevent spam, the platform will operate on a "closed community" model where new players must be approved by a Club/Community Admin.
+
+**Objective of this Document:** To provide you (the Software Architect) with the business context, core requirements, and constraints needed to design a scalable, secure, and robust technical architecture for the MVP.
+
+---
+
+### 2. User Roles & Personas
+*   **The Player:** A padel enthusiast who wants to log matches, keep track of their win/loss record, and view match history. They must request access and be approved to use the app.
+*   **The Admin:** A club manager or community organizer. They are responsible for vetting and approving new player registrations, managing the master list of local padel locations, and resolving match disputes.
+*   **System/Super Admin (Implicit):** Manages the global app settings and assigns the initial Admin roles.
+
+---
+
+### 3. Core Features & Epics (MVP Scope)
+
+#### Epic 1: Onboarding & Access Control (The "Vetted" Community)
+*   **Registration Request:** Unregistered users can download the app and submit a registration request (Name, Email, Phone, Local Club/Community).
+*   **Admin Approval Queue:** Admins receive a push notification when a new user requests access. They can Approve or Reject the request from an in-app Admin Dashboard.
+*   **Authentication:** Secure login for approved users (Email/Password or Social Auth).
+
+#### Epic 2: Match Management
+*   **Create Match:** A player can create a match record.
+    *   *Required Data:* Date, Time, Location (selected from an Admin-managed list or created via GPS/Maps API), and Players (selecting 3 other registered players for a 2v2 match).
+*   **Result Logging:** Once a match is marked "Completed", the creator (or any participant) can input the set scores (e.g., 6-4, 3-6, 6-2).
+*   **Dispute/Confirmation:** If a participant disputes a score, it is flagged for Admin review.
+
+#### Epic 3: Player Dashboard & History
+*   **Match History:** A chronological list of past matches with scores, locations, and partners/opponents.
+*   **Basic Stats:** Total matches played, win/loss ratio, and most frequent locations.
+
+#### Epic 4: Admin Management
+*   **User Management:** Approve/Reject users, suspend users.
+*   **Location Management:** Add, edit, or archive Padel Clubs/Courts (Name, Address, Coordinates) so players can select them from a standardized dropdown when creating matches.
+
+---
+
+### 4. High-Level Domain Model (Data Entities)
+To help you visualize the database schema, here are the core entities I anticipate:
+*   **User:** `ID, Name, Email, Phone, Role (Player/Admin), Status (Pending/Active/Suspended), CreatedAt`
+*   **Location:** `ID, Name, Address, Latitude, Longitude, IsActive`
+*   **Match:** `ID, Date, Time, LocationID, Status (Scheduled/Completed/Disputed), CreatedByUserID`
+*   **MatchParticipant:** `MatchID, UserID, Team (A/B), ScoreSets (JSON/Array)`
+
+---
+
+### 5. Non-Functional Requirements (NFRs)
+*   **Offline Capabilities (Crucial):** Padel clubs (especially indoor or basement courts) often have terrible cellular reception. Players **must** be able to view their dashboard, create a match, and input scores while offline. The app must sync seamlessly when the connection is restored.
+*   **Security & Privacy:** 
+    *   Role-Based Access Control (RBAC) to ensure players cannot approve users or alter master location data.
+    *   PII (Phone numbers, emails) must be encrypted at rest and only visible to Admins or direct match participants.
+*   **Performance:** App cold-start to dashboard should be under 1.5 seconds. Match history queries should be paginated and cached locally.
+*   **Scalability:** While we are starting with a single local community, the backend architecture should support multi-tenancy (multiple distinct clubs/communities) for Phase 2.
+
+---
+
+### 6. Technical Constraints & Open Questions for the Architect
+As the PO, I am looking to you for technical leadership on the following decisions:
+
+1.  **Client Framework:** The business requirement is currently **Android only** for the MVP to save costs and time-to-market. However, iOS is guaranteed for Phase 2. 
+    *   *Question:* Should we build Native Android (Kotlin/Jetpack Compose) now and rewrite later, or use a cross-platform framework like Flutter or Kotlin Multiplatform (KMP) from Day 1?
+2.  **Backend & Infrastructure:** 
+    *   *Question:* Do you recommend a Backend-as-a-Service (BaaS) like Firebase/Supabase to speed up MVP delivery (especially for offline-sync and push notifications), or a custom backend (e.g., Node.js/Spring Boot + PostgreSQL) for better long-term relational data control?
+3.  **Admin Interface:** 
+    *   *Question:* Should the Admin features be built directly into the Android app (hidden behind RBAC), or should we spin up a lightweight React/Vue web portal for Admins to manage users and locations on a desktop?
+4.  **Third-Party Integrations:** We will need a Maps/Location API (Google Maps/Mapbox) for court selection. Please factor this into the architecture and cost estimates.
+
+---
+
+### 7. Out of Scope for MVP (Phase 2+)
+*Please do not over-engineer the MVP architecture to support these immediately, but keep them in mind so we don't paint ourselves into a corner:*
+*   Elo/Glicko rating algorithms and global leaderboards.
+*   Court booking and payment gateway integrations.
+*   Social features (chat, photo uploads, tagging).
+*   iOS Native App.
+*   Tournament/Bracket management.
+
+---
+
+### 8. Next Steps & Deliverables Requested
+Before we move into sprint planning and UI/UX finalization, I need you to review this brief and provide:
+
+1.  **High-Level Architecture Diagram:** Showing the client, backend, database, and third-party services.
+2.  **Tech Stack Recommendation:** With a brief justification for your choices (especially regarding the Native vs. Cross-platform and BaaS vs. Custom Backend questions).
+3.  **Risk Assessment:** What are the biggest technical risks (e.g., offline-sync conflicts in match results) and how will we mitigate them?
+4.  **Rough Infrastructure Cost Estimate:** Expected monthly cloud/hosting costs for the first 1,000 users.
+
+Let's schedule a 45-minute sync later this week to discuss your initial thoughts. 
+
+Thanks,
+
+**[Your Name]**  
+Product Owner, PadelSync

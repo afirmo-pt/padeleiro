@@ -1,0 +1,30 @@
+{
+  "_comment": "PLACEHOLDER — Replace this file with the real google-services.json downloaded from your Firebase project console (https://console.firebase.google.com). Go to Project Settings > Your apps > Android app > Download google-services.json.",
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "padeleiro-mvp",
+    "storage_bucket": "padeleiro-mvp.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+        "android_client_info": {
+          "package_name": "com.padeleiro.padeleiro_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "REPLACE_WITH_REAL_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
