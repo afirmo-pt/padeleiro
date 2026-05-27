@@ -18,7 +18,7 @@ jobs:
     if: github.event_name != 'pull_request'
     env:
       FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-      # GOOGLE_APPLICATION_CREDENTIALS will be set at runtime to the temp file
+      # GOOGLE_APPLICATION_CREDENTIALS will be set at runtime to the file
     steps:
       - uses: actions/checkout@v4
 
@@ -42,8 +42,8 @@ jobs:
 
       - name: Authenticate with service account
         run: |
-          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > "$RUNNER_TEMP/firebase_sa.json"
-          echo "Wrote service account to $RUNNER_TEMP/firebase_sa.json"
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > "${{ github.workspace }}/firebase_sa.json"
+          echo "Wrote service account to ${{ github.workspace }}/firebase_sa.json"
         shell: bash
 
       - name: Install Firebase CLI
@@ -51,12 +51,12 @@ jobs:
 
       - name: Deploy Firestore rules, functions, hosting
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase_sa.json
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/firebase_sa.json
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: |
           firebase deploy --only firestore:rules,functions,hosting --project "$FIREBASE_PROJECT_ID"
 
       - name: Clean up service account file
         run: |
-          rm -f "$RUNNER_TEMP/firebase_sa.json" || true
+          rm -f "${{ github.workspace }}/firebase_sa.json" || true
         shell: bash
