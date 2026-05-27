@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/data/auth_providers.dart';
 import '../data/match_providers.dart';
+import '../data/match_repository.dart';
 import '../../../models/match.dart';
 import '../../../models/enums.dart';
 

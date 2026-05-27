@@ -232,6 +232,7 @@ class _MatchCard extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 
