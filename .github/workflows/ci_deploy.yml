@@ -27,20 +27,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          flutter-version: '3.22.0'
-          cache: true
-
-      - name: Install functions dependencies and build
-        working-directory: functions
+      - name: Install Flutter
         run: |
-          npm ci
-          if [ -f package.json ] && grep -q "build" package.json; then
-            npm run build || true
-          fi
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1
+          echo "$GITHUB_WORKSPACE/flutter/bin" >> $GITHUB_PATH
 
       - name: Build Flutter web app
         run: |
