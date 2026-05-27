@@ -40,6 +40,12 @@ jobs:
             npm run build || true
           fi
 
+      - name: Build Flutter web app
+        run: |
+          cd padeleiro_app
+          flutter pub get
+          flutter build web
+
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
