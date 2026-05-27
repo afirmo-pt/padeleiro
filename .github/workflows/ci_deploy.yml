@@ -18,12 +18,17 @@ jobs:
     if: github.event_name != 'pull_request'
     env:
       FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-      GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/service-account.json
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create service account file
-        run: echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > service-account.json
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
