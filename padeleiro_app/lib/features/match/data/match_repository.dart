@@ -113,11 +113,23 @@ class FirebaseMatchRepository implements MatchRepository {
 
   @override
   Future<void> finalizeMatch(String matchId, List<SetScore> scores) async {
-    final winnerId = _determineWinner(scores);
+    // Ler a partida para obter os dados das equipas
+    final matchDoc = await _matches.doc(matchId).get();
+    if (!matchDoc.exists) {
+      throw StateError('Documento matches/$matchId não encontrado.');
+    }
+    final matchData = matchDoc.data()!;
+    final teamA = MatchTeam.fromMap(matchData['teamA'] as Map<String, dynamic>);
+    final teamB = MatchTeam.fromMap(matchData['teamB'] as Map<String, dynamic>);
+
+    final winningTeam = _determineWinner(scores);
+    // Guardar o player1Id da equipa vencedora (não a string 'teamA'/'teamB')
+    final winnerPlayerId =
+        winningTeam == 'teamA' ? teamA.player1Id : teamB.player1Id;
 
     await _matches.doc(matchId).update({
       'scores': scores.map((s) => s.toMap()).toList(),
-      'winnerId': winnerId,
+      'winnerId': winnerPlayerId,
       'status': 'completed',
     });
   }
@@ -151,7 +163,7 @@ class FirebaseMatchRepository implements MatchRepository {
       }
     }
 
-    return teamAWins >= teamBWins ? 'teamA' : 'teamB';
+    return teamAWins > teamBWins ? 'teamA' : 'teamB';
   }
 }
 

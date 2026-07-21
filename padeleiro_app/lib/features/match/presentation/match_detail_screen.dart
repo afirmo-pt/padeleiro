@@ -105,6 +105,20 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen> {
     return '${team.player1Name} / ${team.player2Name}';
   }
 
+  /// Devolve o nome da equipa vencedora, compatível tanto com o formato
+  /// antigo ('teamA'/'teamB') como com o novo (playerId do vencedor).
+  String _winningTeamLabel(Match match) {
+    final winnerId = match.winnerId!;
+    // Formato antigo: 'teamA' ou 'teamB'
+    if (winnerId == 'teamA') return _playerLabel(match.teamA);
+    if (winnerId == 'teamB') return _playerLabel(match.teamB);
+    // Formato novo: playerId do vencedor
+    if (winnerId == match.teamA.player1Id || winnerId == match.teamA.player2Id) {
+      return _playerLabel(match.teamA);
+    }
+    return _playerLabel(match.teamB);
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
@@ -124,9 +138,7 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen> {
             data: (match) {
               final canFinalize = user != null && match.status == MatchStatus.scheduled && match.createdBy == user.uid;
               final winnerName = match.winnerId != null
-                  ? (match.winnerId == match.teamA.player1Id || match.winnerId == match.teamA.player2Id
-                      ? _playerLabel(match.teamA)
-                      : _playerLabel(match.teamB))
+                  ? _winningTeamLabel(match)
                   : null;
 
               return SingleChildScrollView(

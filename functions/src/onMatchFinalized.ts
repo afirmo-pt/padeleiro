@@ -24,7 +24,7 @@ function determineWinner(scores: SetScore[]): 'teamA' | 'teamB' {
     }
   }
 
-  return teamAWins >= teamBWins ? 'teamA' : 'teamB';
+  return teamAWins > teamBWins ? 'teamA' : 'teamB';
 }
 
 export const onMatchFinalized = onDocumentUpdated(

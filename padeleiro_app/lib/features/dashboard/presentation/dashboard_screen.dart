@@ -54,6 +54,11 @@ class _DashboardView extends ConsumerWidget {
         title: const Text('Dashboard'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.admin_panel_settings),
+            tooltip: 'Painel Admin',
+            onPressed: () => context.go(AppRoutes.admin),
+          ),
+          IconButton(
             icon: const Icon(Icons.person),
             tooltip: 'Perfil',
             onPressed: () => context.go(AppRoutes.profile),
