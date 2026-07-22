@@ -60,3 +60,15 @@ jobs:
       - name: Deploy Firestore rules, functions, hosting
         run: |
           firebase deploy --only firestore:rules,functions,hosting --project "$FIREBASE_PROJECT_ID" --force
+
+      - name: Set admin claim for afirmo@gmail.com
+        run: |
+          cd functions
+          node -e "
+            const admin = require('firebase-admin');
+            admin.initializeApp();
+            admin.auth().getUserByEmail('afirmo@gmail.com')
+              .then(user => admin.auth().setCustomUserClaims(user.uid, { role: 'admin' }))
+              .then(() => { console.log('Admin claim set!'); process.exit(0); })
+              .catch(err => { console.error(err); process.exit(1); });
+          "
