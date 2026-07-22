@@ -105,7 +105,7 @@ service cloud.firestore {
     }
 
     match /user_stats/{uid} {
-      allow read: if isActiveUser() || isAdmin();
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
       allow write: if false;
     }
 

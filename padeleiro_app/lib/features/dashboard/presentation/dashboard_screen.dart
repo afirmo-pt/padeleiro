@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -53,11 +54,7 @@ class _DashboardView extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.admin_panel_settings),
-            tooltip: 'Painel Admin',
-            onPressed: () => context.go(AppRoutes.admin),
-          ),
+          _AdminButton(),
           IconButton(
             icon: const Icon(Icons.person),
             tooltip: 'Perfil',
@@ -170,6 +167,38 @@ class _DashboardBody extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _AdminButton — botão do painel admin (visível apenas para admins)
+// ---------------------------------------------------------------------------
+
+class _AdminButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return IconButton(
+      icon: const Icon(Icons.admin_panel_settings),
+      tooltip: 'Painel Admin',
+      onPressed: () async {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) return;
+        final idTokenResult = await user.getIdTokenResult();
+        final role = (idTokenResult.claims ?? {})['role'] as String?;
+        if (role == 'admin') {
+          if (context.mounted) context.go(AppRoutes.admin);
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Apenas administradores têm acesso.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      },
     );
   }
 }
