@@ -59,7 +59,7 @@ jobs:
 
       - name: Deploy Firestore rules, functions, hosting
         run: |
-          firebase deploy --only firestore:rules,functions,hosting --project "$FIREBASE_PROJECT_ID" --force
+          firebase deploy --only firestore:rules,firestore:indexes,functions,hosting --project "$FIREBASE_PROJECT_ID" --force
 
       - name: Set admin claim for afirmo@gmail.com
         run: |
