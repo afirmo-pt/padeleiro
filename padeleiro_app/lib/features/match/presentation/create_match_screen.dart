@@ -79,7 +79,14 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
         }
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Nova Partida')),
+          appBar: AppBar(
+            title: const Text('Nova Partida'),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'Cancelar',
+              onPressed: () => context.go(AppRoutes.dashboard),
+            ),
+          ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(

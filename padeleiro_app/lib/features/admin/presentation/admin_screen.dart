@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/router/app_router.dart';
 import '../../../core/widgets/swipe_action_card.dart';
 import '../../../models/app_user.dart';
 import '../../../models/location.dart';
@@ -66,6 +68,11 @@ class _AdminScreenState extends ConsumerState<AdminScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Painel Admin'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Voltar',
+          onPressed: () => context.go(AppRoutes.dashboard),
+        ),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

@@ -131,6 +131,11 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Detalhe da Partida'),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'Voltar',
+              onPressed: () => context.go(AppRoutes.dashboard),
+            ),
           ),
           body: matchAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
