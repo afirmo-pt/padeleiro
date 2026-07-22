@@ -1,6 +1,8 @@
 name: Build & Distribute APK (Android)
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       tester_emails:
@@ -52,10 +54,13 @@ jobs:
           npm install -g firebase-tools@latest
 
       - name: Upload APK to Firebase App Distribution
+        env:
+          TESTER_EMAILS: ${{ github.event.inputs.tester_emails || 'afirmo@gmail.com' }}
+          RELEASE_NOTES: ${{ github.event.inputs.release_notes || github.event.head_commit.message }}
         run: |
           firebase appdistribution:distribute \
             padeleiro_app/build/app/outputs/flutter-apk/app-release.apk \
             --project "$FIREBASE_PROJECT_ID" \
             --app "${{ secrets.FIREBASE_ANDROID_APP_ID }}" \
-            --testers "${{ github.event.inputs.tester_emails }}" \
-            --release-notes "${{ github.event.inputs.release_notes }}"
+            --testers "$TESTER_EMAILS" \
+            --release-notes "$RELEASE_NOTES"
