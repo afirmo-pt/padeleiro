@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +18,117 @@ class CreateMatchScreen extends ConsumerStatefulWidget {
 }
 
 class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
+  Future<void> _showInviteDialog(BuildContext context) async {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('Convidar jogador'),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Nome completo',
+                        hintText: 'Ex: João Silva',
+                      ),
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Obrigatório' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        hintText: 'Ex: joao@email.com',
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Obrigatório';
+                        if (!v.contains('@')) return 'Email inválido';
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final fn = FirebaseFunctions.instanceFor(
+                              region: 'us-central1',
+                            ).httpsCallable('invitePlayer');
+                            final result = await fn({
+                              'name': nameController.text.trim(),
+                              'email': emailController.text.trim(),
+                            });
+                            final data = result.data as Map<String, dynamic>;
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop();
+                              ref.invalidate(activePlayersProvider);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Jogador ${data['fullName']} convidado com sucesso!',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSubmitting = false);
+                            if (dialogContext.mounted) {
+                              final msg = e is FirebaseFunctionsException
+                                  ? e.message ?? 'Erro ao convidar jogador.'
+                                  : 'Erro ao convidar jogador.';
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(msg),
+                                  backgroundColor: Theme.of(context).colorScheme.error,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        )
+                      : const Text('Convidar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    nameController.dispose();
+    emailController.dispose();
+  }
+
   Future<void> _selectDateTime() async {
     final now = DateTime.now();
     final date = await showDatePicker(
@@ -201,6 +313,12 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
                       ),
                     );
                   },
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () => _showInviteDialog(context),
+                  icon: const Icon(Icons.person_add_outlined),
+                  label: const Text('Convidar jogador'),
                 ),
                 if (createState.selectedPlayers.isNotEmpty) ...[
                   const SizedBox(height: 24),
