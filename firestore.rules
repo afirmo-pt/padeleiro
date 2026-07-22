@@ -99,7 +99,7 @@ service cloud.firestore {
     match /users/{uid} {
       allow create: if isValidUserCreate(uid);
       allow get: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
-      allow list: if isAuthenticated() && request.query.status == 'active';
+      allow list: if isAuthenticated();
       allow update: if isAdmin() || canUpdateOwnUser(uid);
       allow delete: if isAdmin();
     }
@@ -110,13 +110,14 @@ service cloud.firestore {
     }
 
     match /locations/{locationId} {
-      allow read: if isActiveUser() || isAdmin();
+      allow read: if isAuthenticated();
       allow create, update: if isAdmin() && isValidLocationWrite();
       allow delete: if false;
     }
 
     match /matches/{matchId} {
-      allow read: if isAdmin() || (isAuthenticated() && isParticipant(resource.data));
+      allow get: if isAdmin() || (isAuthenticated() && isParticipant(resource.data));
+      allow list: if isAuthenticated();
       allow create: if isActiveUser() && isValidMatchCreate();
       allow update: if isActiveUser() && request.auth.uid == resource.data.createdBy && isValidMatchComplete();
       allow delete: if false;
