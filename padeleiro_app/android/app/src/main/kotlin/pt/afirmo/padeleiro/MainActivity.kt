@@ -1,4 +1,4 @@
-package com.padeleiro.padeleiro_app
+package pt.afirmo.padeleiro
 
 import io.flutter.embedding.android.FlutterActivity
 
