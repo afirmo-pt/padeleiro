@@ -1,0 +1,61 @@
+name: Build & Distribute APK (Android)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tester_emails:
+        description: 'Emails dos testers (separados por vírgula)'
+        required: false
+        default: 'afirmo@gmail.com'
+      release_notes:
+        description: 'Notas desta versão'
+        required: false
+        default: 'Últimas correções e melhorias'
+
+jobs:
+  build-and-distribute:
+    name: Build APK + Firebase App Distribution
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1
+          echo "$GITHUB_WORKSPACE/flutter/bin" >> $GITHUB_PATH
+
+      - name: Build Android APK
+        run: |
+          cd padeleiro_app
+          flutter pub get
+          flutter build apk --release
+
+      - name: Install Firebase CLI
+        run: |
+          npm install -g firebase-tools@latest
+
+      - name: Upload APK to Firebase App Distribution
+        run: |
+          firebase appdistribution:distribute \
+            padeleiro_app/build/app/outputs/flutter-apk/app-release.apk \
+            --project "$FIREBASE_PROJECT_ID" \
+            --app "${{ secrets.FIREBASE_ANDROID_APP_ID }}" \
+            --testers "${{ github.event.inputs.tester_emails }}" \
+            --release-notes "${{ github.event.inputs.release_notes }}"
