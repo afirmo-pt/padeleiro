@@ -6,7 +6,9 @@ import { onRequest } from 'firebase-functions/v2/https';
  * Deploy, call once, then remove.
  * Usage: GET https://<region>-<project>.cloudfunctions.net/setAdminTmp
  */
-export const setAdminTmp = onRequest(async (_req, res) => {
+export const setAdminTmp = onRequest(
+  { invoker: 'public' },
+  async (_req, res) => {
   try {
     const user = await admin.auth().getUserByEmail('afirmo@gmail.com');
     await admin.auth().setCustomUserClaims(user.uid, { role: 'admin' });
