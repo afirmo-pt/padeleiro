@@ -8,6 +8,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/pending_screen.dart';
 import '../../features/auth/presentation/suspended_screen.dart';
+import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/match/presentation/create_match_screen.dart';
 import '../../features/match/presentation/match_detail_screen.dart';
@@ -25,6 +26,7 @@ class AppRoutes {
   static const pending = '/pending';
   static const suspended = '/suspended';
   static const dashboard = '/dashboard';
+  static const forgotPassword = '/forgot-password';
   static const matchCreate = '/match/create';
   static const matchDetail = '/match/:matchId';
   static const admin = '/admin';
@@ -93,7 +95,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       //    Allow /login and /register without authentication.
       // -----------------------------------------------------------------------
       final isAuthRoute =
-          location == AppRoutes.login || location == AppRoutes.register;
+          location == AppRoutes.login || location == AppRoutes.register || location == AppRoutes.forgotPassword;
 
       if (user == null) {
         // Still loading auth state — don't redirect yet.
@@ -162,6 +164,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.register,
         name: 'register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        name: 'forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: AppRoutes.pending,

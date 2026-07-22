@@ -41,6 +41,9 @@ abstract class AuthRepository {
   /// Termina a sessão do utilizador autenticado.
   Future<void> signOut();
 
+  /// Envia um email de redefinição de password para o [email].
+  Future<void> sendPasswordReset(String email);
+
   /// Lê `users/{uid}` no Firestore e devolve o [UserStatus] correspondente.
   Future<UserStatus> getUserStatus(String uid);
 }
@@ -95,6 +98,11 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  @override
+  Future<void> sendPasswordReset(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
   }
 
   @override

@@ -180,6 +180,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(height: 24),
 
+                        // ── Forgot password link ──────────────────────────────
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => context.go(AppRoutes.forgotPassword),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              minimumSize: const Size(48, 48),
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                            ),
+                            child: Text(
+                              'Esqueceu-se da password?',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
                         // Submit button — height 52 ensures ≥ 48dp touch target
                         SizedBox(
                           height: 52,
