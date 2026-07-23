@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export const invitePlayer = onCall(async (request) => {
   const { name, email } = request.data as { name: string; email: string };
@@ -25,7 +26,7 @@ export const invitePlayer = onCall(async (request) => {
       phone: '',
       community: '',
       status: 'pending',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
 
     return { uid: user.uid, email, fullName: name, password: tempPassword };
