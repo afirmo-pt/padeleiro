@@ -74,9 +74,7 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
                           if (!formKey.currentState!.validate()) return;
                           setDialogState(() => isSubmitting = true);
                           try {
-                            final fn = FirebaseFunctions.instanceFor(
-                              region: 'us-central1',
-                            ).httpsCallable('invitePlayer');
+                            final fn = FirebaseFunctions.instance.httpsCallable('invitePlayer');
                             final result = await fn({
                               'name': nameController.text.trim(),
                               'email': emailController.text.trim(),
@@ -98,7 +96,7 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
                             setDialogState(() => isSubmitting = false);
                             if (dialogContext.mounted) {
                               final msg = e is FirebaseFunctionsException
-                                  ? e.message ?? 'Erro ao convidar jogador.'
+                                  ? '${e.message ?? e.code}'
                                   : 'Erro ao convidar jogador.';
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
