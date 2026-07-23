@@ -1,7 +1,9 @@
-import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -18,6 +20,11 @@ class CreateMatchScreen extends ConsumerStatefulWidget {
 }
 
 class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
+  String _generatePassword() {
+    final r = DateTime.now().microsecondsSinceEpoch;
+    return r.toRadixString(36).substring(0, 10) + '1!aA';
+  }
+
   Future<void> _showInviteDialog(BuildContext context) async {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
@@ -74,22 +81,61 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
                           if (!formKey.currentState!.validate()) return;
                           setDialogState(() => isSubmitting = true);
                           try {
-                            final fn = FirebaseFunctions.instance.httpsCallable('invitePlayer');
-                            final result = await fn({
-                              'name': nameController.text.trim(),
-                              'email': emailController.text.trim(),
+                            final name = nameController.text.trim();
+                            final email = emailController.text.trim();
+                            final tempPassword = _generatePassword();
+
+                            // 1. Call Firebase Auth REST API to create user
+                            const apiKey = 'AIzaSyDL9QslCJFsviPXEjA7P21ozHIrMoqDQLE';
+                            final response = await http.post(
+                              Uri.parse(
+                                'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$apiKey',
+                              ),
+                              headers: {'Content-Type': 'application/json'},
+                              body: jsonEncode({
+                                'email': email,
+                                'password': tempPassword,
+                                'displayName': name,
+                                'returnSecureToken': false,
+                              }),
+                            );
+
+                            final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+                            if (response.statusCode != 200) {
+                              final error = body['error']?['message'] ?? 'Erro ao criar conta.';
+                              if (dialogContext.mounted) {
+                                setDialogState(() => isSubmitting = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(error),
+                                    backgroundColor: Theme.of(context).colorScheme.error,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+
+                            final uid = body['localId'] as String;
+
+                            // 2. Create Firestore user doc
+                            await FirebaseFirestore.instance.collection('users').doc(uid).set({
+                              'uid': uid,
+                              'email': email,
+                              'fullName': name,
+                              'phone': '',
+                              'community': '',
+                              'status': 'pending',
+                              'createdAt': FieldValue.serverTimestamp(),
                             });
-                            final data = result.data as Map<String, dynamic>;
+
                             if (dialogContext.mounted) {
-                              final password = data['password'] as String? ?? '';
                               Navigator.of(dialogContext).pop();
                               ref.invalidate(activePlayersProvider);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(
-                                    '${data['fullName']} convidado!\n'
-                                    'Password temporária: $password',
-                                  ),
+                                  content: Text('$name convidado!\nPassword: $tempPassword'),
                                   duration: const Duration(seconds: 8),
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -98,12 +144,9 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
                           } catch (e) {
                             setDialogState(() => isSubmitting = false);
                             if (dialogContext.mounted) {
-                              final msg = e is FirebaseFunctionsException
-                                  ? '${e.message ?? e.code}'
-                                  : 'Erro ao convidar jogador.';
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(msg),
+                                  content: Text('Erro ao convidar jogador: $e'),
                                   backgroundColor: Theme.of(context).colorScheme.error,
                                   behavior: SnackBarBehavior.floating,
                                 ),

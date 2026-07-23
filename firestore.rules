@@ -97,7 +97,7 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow create: if isValidUserCreate(uid);
+      allow create: if isValidUserCreate(uid) || isAdmin();
       allow get: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
       allow list: if isAuthenticated();
       allow update: if isAdmin() || canUpdateOwnUser(uid);
