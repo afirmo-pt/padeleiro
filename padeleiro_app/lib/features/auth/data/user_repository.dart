@@ -51,13 +51,10 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Stream<List<AppUser>> watchActivePlayers() {
-    final currentUid = _auth.currentUser?.uid;
-
     return _users
         .where('status', isEqualTo: 'active')
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .where((doc) => doc.id != currentUid)
             .map((doc) => AppUser.fromFirestore(doc))
             .toList());
   }
