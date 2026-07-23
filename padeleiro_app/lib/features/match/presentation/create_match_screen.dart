@@ -81,13 +81,16 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
                             });
                             final data = result.data as Map<String, dynamic>;
                             if (dialogContext.mounted) {
+                              final password = data['password'] as String? ?? '';
                               Navigator.of(dialogContext).pop();
                               ref.invalidate(activePlayersProvider);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    'Jogador ${data['fullName']} convidado com sucesso!',
+                                    '${data['fullName']} convidado!\n'
+                                    'Password temporária: $password',
                                   ),
+                                  duration: const Duration(seconds: 8),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
